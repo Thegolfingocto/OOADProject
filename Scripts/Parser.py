@@ -17,6 +17,9 @@ def Parse(strPath):
     with open(strPath, "r") as f:
         methods = find_java_method_definitions(f.read())
     print(methods)
+    
+    for method in methods:
+        print(methods.count(method))
 #methods = find_java_method_definitions(java_code)
 #print(methods)
 
