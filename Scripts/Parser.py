@@ -24,9 +24,17 @@ def find_java_method_definitions(code):
 
 def Parse(strPath):
     with open(strPath, "r") as f:
+<<<<<<< HEAD
         methods_linenumber, methods_functionbody = find_java_method_definitions(f.read())
     for method_name in methods_functionbody:
         print(method_name,'\n\n', methods_functionbody[method_name], '\n\n\n')
+=======
+        methods = find_java_method_definitions(f.read())
+    print(methods)
+    
+    for method in methods:
+        print(methods.count(method))
+>>>>>>> b85190cd83d9553913948b7d2cb37547a117576c
 #methods = find_java_method_definitions(java_code)
 #print(methods)
 
