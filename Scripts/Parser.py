@@ -3,23 +3,24 @@ import re
 
 
 mapLangToPattern = {
-    "Java": r'\b(?:public|private|protected)?\s*(?:static\s*)?(?:[\w<>\[\]]+\s+)+(\w+)\s*\([^)]*\)\s*\{',
+    "Java": r'\b(?:public|private|protected)?\s*(?:static\s*)?(?:[\w<>\[\]]+\s+)+(\w+)\s*\([^)]*\)\s*(?:throws\s*\w+)?\s*\{',
     "C++": r'\b([a-zA-Z_]\w*)\s*\([^;]*\)\s*\{'
 }
 
-def find_matching_brace(code, start_index):
+def FindClosingBrace(code, start_index):
     """Given a starting position after an opening brace `{`, find the matching closing brace `}`"""
+    assert(code[start_index] == '{')
     brace_count = 1
     for i in range(start_index + 1, len(code)):
         if code[i] == '{':
             brace_count += 1
         elif code[i] == '}':
             brace_count -= 1
-            if brace_count == 0:
-                return i
+        if brace_count == 0:
+            return i
     return None
 
-def find_java_method_definitions(code, strL: str = "Java"):
+def FindFunctions(code, strL: str = "Java"):
     regPattern = mapLangToPattern.get(strL)
     methods = []
     methods_linenumber = dict()
@@ -33,7 +34,7 @@ def find_java_method_definitions(code, strL: str = "Java"):
         if match.group(1) not in methods_functionbody.keys():
             methods_functionbody[match.group(1)] = []
         methods_linenumber[match.group(1)].append(line_number)
-        end_pos = find_matching_brace(code, match.end() - 1)
+        end_pos = FindClosingBrace(code, match.end() - 1)
         if end_pos:
             full_function = code[start:end_pos + 1]
             methods_functionbody[match.group(1)].append(full_function)
@@ -53,7 +54,7 @@ def Parse(strPath):
     elif "C++" in strPath: strLang = "C++"
 
     with open(strPath, "r") as f:
-        methods_linenumber, methods_functionbody, methods_methodscalled = find_java_method_definitions(f.read(), strLang)
+        methods_linenumber, methods_functionbody, methods_methodscalled = FindFunctions(f.read(), strLang)
     for method_name in methods_functionbody:
         print(methods_linenumber[method_name][0], method_name, '\n', "Called Funcs:", len(methods_methodscalled[method_name]))
         for i in range(len(methods_methodscalled[method_name])):
