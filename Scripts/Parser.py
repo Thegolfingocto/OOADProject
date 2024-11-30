@@ -1,7 +1,11 @@
 import os
 import re
 
-vecTypes = ["bool", "boolean", "int", "integer", "float", "double", "void", "string", "char"]
+
+mapLangToPattern = {
+    "Java": r'\b(?:public|private|protected)?\s*(?:static\s*)?(?:[\w<>\[\]]+\s+)+(\w+)\s*\([^)]*\)\s*\{',
+    "C++": r'\b([a-zA-Z_]\w*)\s*\([^;]*\)\s*\{'
+}
 
 def find_matching_brace(code, start_index):
     """Given a starting position after an opening brace `{`, find the matching closing brace `}`"""
@@ -15,14 +19,13 @@ def find_matching_brace(code, start_index):
                 return i
     return None
 
-def find_java_method_definitions(code):
-    pattern_function_java = r'\b(?:public|private|protected)?\s*(?:static\s*)?(?:[\w<>\[\]]+\s+)+(\w+)\s*\([^)]*\)\s*\{'
-    pattern_function_cplusplus = r'\b([a-zA-Z_]\w*)\s*\([^;]*\)\s*\{'
+def find_java_method_definitions(code, strL: str = "Java"):
+    regPattern = mapLangToPattern.get(strL)
     methods = []
     methods_linenumber = dict()
     methods_functionbody = dict()
     methods_methodscalled = dict()
-    for match in re.finditer(pattern_function_cplusplus, code):
+    for match in re.finditer(regPattern, code):
         start = match.start()
         line_number = code.count('\n', 0, start) + 1
         if match.group(1) not in methods_linenumber.keys():
@@ -45,10 +48,18 @@ def find_java_method_definitions(code):
     return methods_linenumber, methods_functionbody, methods_methodscalled
 
 def Parse(strPath):
+    strLang = ""
+    if "Java" in strPath: strLang = "Java"
+    elif "C++" in strPath: strLang = "C++"
+
     with open(strPath, "r") as f:
-        methods_linenumber, methods_functionbody, methods_methodscalled = find_java_method_definitions(f.read())
+        methods_linenumber, methods_functionbody, methods_methodscalled = find_java_method_definitions(f.read(), strLang)
     for method_name in methods_functionbody:
-        print(method_name,'\n\n', methods_functionbody[method_name], '\n\n\n')
+        print(methods_linenumber[method_name][0], method_name, '\n', "Called Funcs:", len(methods_methodscalled[method_name]))
+        for i in range(len(methods_methodscalled[method_name])):
+            print(methods_methodscalled[method_name][i])
+        print("-----------------------------------------")
+        input()
     print(len(methods_functionbody))
     #print(methods_methodscalled)
 
@@ -57,4 +68,4 @@ def Parse(strPath):
 
 
 if __name__ == "__main__":
-    Parse("../CodeExamples/C++/0001.txt")
+    Parse("../CodeExamples/Java/0003.txt")
