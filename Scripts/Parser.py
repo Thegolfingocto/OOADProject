@@ -1,4 +1,5 @@
 import re
+import numpy as np
 
 vecLangs = ["Java", "C++"]
 
@@ -18,7 +19,7 @@ mapBraceTypes = {
     "[": "]",
 }
 
-def FindClosingBrace(code, start_index, chType: str = '{'):
+def FindClosingBrace(code, start_index, chType: str = '{') -> int:
     assert(code[start_index] == chType)
     chEndType = mapBraceTypes[chType]
     brace_count = 1
@@ -31,7 +32,7 @@ def FindClosingBrace(code, start_index, chType: str = '{'):
             return i
     return None
 
-def FindFunctionCalls(strLine: str):
+def FindFunctionCalls(strLine: str) -> list[str]:
     vecCalledFunctionNames = []
     for match in re.finditer(regIsFunc, strLine):
         idxStart = match.start()
@@ -65,7 +66,7 @@ def FindFunctionCalls(strLine: str):
 
     return vecCalledFunctionNames
 
-def FindFunctions(strCode: str, strL: str = "Java"):
+def FindFunctions(strCode: str, strL: str = "Java") -> dict:
     regPattern = mapLangToPattern.get(strL)
     dFunctions = {}
 
@@ -90,6 +91,8 @@ def FindFunctions(strCode: str, strL: str = "Java"):
                 "Body": strCode[idxStart : idxEnd + 1].splitlines(),
                 "Callees": [],
                 "SubCallees": [],
+                "Callers": [],
+                "Rank": -1,
             }
             dFunctions[strFunctionName] = dFunc
         else:
@@ -98,7 +101,7 @@ def FindFunctions(strCode: str, strL: str = "Java"):
     
     #collect all names in a list for callee mapping
     vecFunctionNames = [key for key in dFunctions.keys()]
-    vecSubFunctionNames = [] #keep track of which functions are external to the source file in question
+    dSubFunctions = {} #keep track of which functions are external to the source file in question
 
     #callee processing loop
     for strFunctionName in vecFunctionNames:
@@ -108,19 +111,93 @@ def FindFunctions(strCode: str, strL: str = "Java"):
 
         while strFunctionName in vecCalleeNames: vecCalleeNames.remove(strFunctionName) #don't count the function itself
 
-        #sort
+        #process caller/callee relationships
         for strCalleeName in vecCalleeNames:
             bSubFunc = strCalleeName not in vecFunctionNames
             if bSubFunc:
-                if not strCalleeName in vecSubFunctionNames: vecSubFunctionNames.append(strCalleeName)
+                #add the subfunction if necessary
+                if not strCalleeName in dSubFunctions.keys():
+                    dSubFunc = {
+                        "Callers": [],
+                        "Rank": 0,
+                    }
+                    dSubFunctions[strCalleeName] = dSubFunc
+
                 if not strCalleeName in dFunctions[strFunctionName]["SubCallees"]: dFunctions[strFunctionName]["SubCallees"].append(strCalleeName)
+                if not strFunctionName in dSubFunctions[strCalleeName]["Callers"]: dSubFunctions[strCalleeName]["Callers"].append(strFunctionName)
+
             else:
                 if not strCalleeName in dFunctions[strFunctionName]["Callees"]: dFunctions[strFunctionName]["Callees"].append(strCalleeName)
+                if not strFunctionName in dFunctions[strCalleeName]["Callers"]: dFunctions[strCalleeName]["Callers"].append(strFunctionName)
 
     return {
         "Functions": dFunctions,
-        "SubFunctions": vecSubFunctionNames
+        "SubFunctions": dSubFunctions
     }
+
+def AssignRank(strKey: str, dUniverse: dict) -> None:
+    if dUniverse[strKey]["Rank"] != -1: return
+
+    #functions w/ no calls are rank 0. functions w/ only sub-callees are rank 1. These form the base cases of the recursion.
+    if len(dUniverse[strKey]["Callees"]) == 0:
+        if len(dUniverse[strKey]["SubCallees"]) == 0:
+            dUniverse[strKey]["Rank"] = 0
+        else:
+            dUniverse[strKey]["Rank"] = 1
+        return
+    
+    iMaxR = 0
+    for strK in dUniverse[strKey]["Callees"]:
+        AssignRank(strK, dUniverse) #recurse downwards w.r.t rank
+        iMaxR = max([iMaxR, dUniverse[strK]["Rank"]])
+    dUniverse[strKey]["Rank"] = iMaxR + 1
+
+    return
+
+def BuildCC(dParseData: dict) -> dict:
+    '''
+    This function accepts output from FindFunctions() and builds a combinatorial complex
+    '''
+    dFunctions = dParseData["Functions"]
+    dSubFunctions = dParseData["SubFunctions"]
+    mapRankToCells = [list(dParseData["SubFunctions"].keys()), []] #it is 'essentially guarenteed' that rank 0 and 1 cells exist
+
+    #compute rank function and associated partitioning
+    for strKey in dFunctions.keys():
+        AssignRank(strKey, dFunctions)
+        while (len(mapRankToCells)) < dFunctions[strKey]["Rank"] + 1: mapRankToCells.append([])
+        mapRankToCells[dFunctions[strKey]["Rank"]].append(strKey)
+
+    #these tensors store +/- 1 adjacency relations
+    vecAdj = [np.zeros((len(mapRankToCells[i]), len(mapRankToCells[i]), 2)) for i in range(len(mapRankToCells))]
+
+    #compute up-adj
+    # for r in range(1, len(mapRankToCells)):
+    #     strQ = "SubCallees" if r == 1 else "Callees"
+    #     for cell in mapRankToCells[r]:
+    #         for i in range(len(dFunctions[cell][strQ])):
+    #             for j in range(i + 1, len(dFunctions[cell][strQ])):
+    #                 idx1 = mapRankToCells[r - 1].index(dFunctions[cell][strQ][i])
+    #                 idx2 = mapRankToCells[r - 1].index(dFunctions[cell][strQ][j])
+    #                 vecAdj[r - 1][idx1, idx2, 0] = 1
+    #                 vecAdj[r - 1][idx2, idx1, 0] = 1
+
+    #compute down-adj
+    # for r in range(len(mapRankToCells) - 1):
+    #     dQ = dSubFunctions if not r else dFunctions
+    #     for cell in mapRankToCells[r]:
+    #         for i in range(len(dQ[cell]["Callers"])):
+    #             for j in range(i + 1, len(dQ[cell]["Callers"])):
+    #                 idx1 = mapRankToCells[r + 1].index(dQ[cell]["Callers"][i])
+    #                 idx2 = mapRankToCells[r + 1].index(dQ[cell]["Callers"][j])
+    #                 vecAdj[r + 1][idx1, idx2, 1] = 1
+    #                 vecAdj[r + 1][idx2, idx1, 1] = 1
+
+    return {
+        "Functions": dFunctions,
+        "SubFunctions": dSubFunctions,
+        "RankMap": mapRankToCells,
+    }, vecAdj
 
 def Parse(strPath):
     strLang = ""
@@ -132,8 +209,10 @@ def Parse(strPath):
     with open(strPath, "r") as f:
         dParseData = FindFunctions(f.read(), strLang)
     
+    dParseData, vecAdj = BuildCC(dParseData)
+
     dFuncs = dParseData["Functions"]
-    iSubFuncs = len(dParseData["SubFunctions"])
+    iSubFuncs = len(dParseData["SubFunctions"].keys())
 
     print("Parsing Results for Source File:", strPath)
     iSubCnt = 0
@@ -143,6 +222,8 @@ def Parse(strPath):
         print("Function:", strName)
         print("Lines:", dFuncs[strName]["StartLine"], "-->", dFuncs[strName]["EndLine"])
         print("Callees:", dFuncs[strName]["Callees"])
+        print("Callers:", dFuncs[strName]["Callers"])
+        print("Rank:", dFuncs[strName]["Rank"])
         print("Number of SubCallees:", len(dFuncs[strName]["SubCallees"]))
         iSubCnt += len(dFuncs[strName]["SubCallees"])
         if len(dFuncs[strName]["SubCallees"]) or len(dFuncs[strName]["Callees"]):
@@ -159,4 +240,4 @@ def Parse(strPath):
     print("Average SubFunction Call Percentage: {:.2f}%".format(fAvgSubFuncRatio * 100 / iCalleeFuncs))
 
 if __name__ == "__main__":
-    Parse("../CodeExamples/Java/0003.txt")
+    Parse("../CodeExamples/Java/0004.txt")
