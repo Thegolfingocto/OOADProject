@@ -147,7 +147,9 @@ def AssignRank(strKey: str, dUniverse: dict) -> None:
         return
     
     iMaxR = 0
+    print(strKey, dUniverse[strKey]["Callees"])
     for strK in dUniverse[strKey]["Callees"]:
+        if strKey in dUniverse[strK]["Callees"]: continue #prevent infinite recursions due to recursions...lmao
         AssignRank(strK, dUniverse) #recurse downwards w.r.t rank
         iMaxR = max([iMaxR, dUniverse[strK]["Rank"]])
     dUniverse[strKey]["Rank"] = iMaxR + 1
@@ -172,26 +174,36 @@ def BuildCC(dParseData: dict) -> dict:
     vecAdj = [np.zeros((len(mapRankToCells[i]), len(mapRankToCells[i]), 2)) for i in range(len(mapRankToCells))]
 
     #compute up-adj
-    # for r in range(1, len(mapRankToCells)):
-    #     strQ = "SubCallees" if r == 1 else "Callees"
-    #     for cell in mapRankToCells[r]:
-    #         for i in range(len(dFunctions[cell][strQ])):
-    #             for j in range(i + 1, len(dFunctions[cell][strQ])):
-    #                 idx1 = mapRankToCells[r - 1].index(dFunctions[cell][strQ][i])
-    #                 idx2 = mapRankToCells[r - 1].index(dFunctions[cell][strQ][j])
-    #                 vecAdj[r - 1][idx1, idx2, 0] = 1
-    #                 vecAdj[r - 1][idx2, idx1, 0] = 1
+    for r in range(1, len(mapRankToCells)):
+        strQ = "SubCallees" if r == 1 else "Callees"
+        dQ = dSubFunctions if r == 1 else dFunctions
+        for cell in mapRankToCells[r]:
+            for i in range(len(dFunctions[cell][strQ])):
+                if dQ[dFunctions[cell][strQ][i]]["Rank"] != r - 1: continue
+
+                for j in range(i + 1, len(dFunctions[cell][strQ])):
+                    if dQ[dFunctions[cell][strQ][j]]["Rank"] != r - 1: continue
+
+                    idx1 = mapRankToCells[r - 1].index(dFunctions[cell][strQ][i])
+                    idx2 = mapRankToCells[r - 1].index(dFunctions[cell][strQ][j])
+                    vecAdj[r - 1][idx1, idx2, 0] = 1
+                    vecAdj[r - 1][idx2, idx1, 0] = 1
 
     #compute down-adj
-    # for r in range(len(mapRankToCells) - 1):
-    #     dQ = dSubFunctions if not r else dFunctions
-    #     for cell in mapRankToCells[r]:
-    #         for i in range(len(dQ[cell]["Callers"])):
-    #             for j in range(i + 1, len(dQ[cell]["Callers"])):
-    #                 idx1 = mapRankToCells[r + 1].index(dQ[cell]["Callers"][i])
-    #                 idx2 = mapRankToCells[r + 1].index(dQ[cell]["Callers"][j])
-    #                 vecAdj[r + 1][idx1, idx2, 1] = 1
-    #                 vecAdj[r + 1][idx2, idx1, 1] = 1
+    for r in range(len(mapRankToCells) - 1):
+        dQ = dSubFunctions if not r else dFunctions
+        for cell in mapRankToCells[r]:
+            if not r and cell not in dQ.keys(): dQ = dFunctions #switch to the other dict halfway thru b/c rank 0 cells are guarenteed to be ordered nicely
+            for i in range(len(dQ[cell]["Callers"])):
+                if dFunctions[dQ[cell]["Callers"][i]]["Rank"] != r + 1: continue
+
+                for j in range(i + 1, len(dQ[cell]["Callers"])):
+                    if dFunctions[dQ[cell]["Callers"][j]]["Rank"] != r + 1: continue
+
+                    idx1 = mapRankToCells[r + 1].index(dQ[cell]["Callers"][i])
+                    idx2 = mapRankToCells[r + 1].index(dQ[cell]["Callers"][j])
+                    vecAdj[r + 1][idx1, idx2, 1] = 1
+                    vecAdj[r + 1][idx2, idx1, 1] = 1
 
     return {
         "Functions": dFunctions,
@@ -210,6 +222,9 @@ def Parse(strPath):
         dParseData = FindFunctions(f.read(), strLang)
     
     dParseData, vecAdj = BuildCC(dParseData)
+    mapRankToCells = dParseData["RankMap"]
+    vecUpVolByRank = [float(np.sum(adj[:,:,0]) / (adj.shape[0] * adj.shape[1])) for adj in vecAdj]
+    vecDownVolByRank = [float(np.sum(adj[:,:,1]) / (adj.shape[0] * adj.shape[1])) for adj in vecAdj]
 
     dFuncs = dParseData["Functions"]
     iSubFuncs = len(dParseData["SubFunctions"].keys())
@@ -238,6 +253,10 @@ def Parse(strPath):
     print("Total SubFunction Calls:", iSubCnt)
     print("SubFunction Uniqueness Percentage: {:.2f}%".format(iSubFuncs * 100 / iSubCnt))
     print("Average SubFunction Call Percentage: {:.2f}%".format(fAvgSubFuncRatio * 100 / iCalleeFuncs))
+    print("Volume of +1-Adjacency:", vecUpVolByRank)
+    print("Volume of -1-Adjacency:", vecDownVolByRank)
+    print("Complex Height:", len(vecAdj))
+    print("Complex Volume:", np.sum(np.array([(i+1) * len(mapRankToCells[i]) for i in range(len(mapRankToCells))])) / np.sum(np.array([len(mapRankToCells[i]) for i in range(len(mapRankToCells))])))
 
 if __name__ == "__main__":
-    Parse("../CodeExamples/Java/0004.txt")
+    Parse("../CodeExamples/Java/0002.txt")
