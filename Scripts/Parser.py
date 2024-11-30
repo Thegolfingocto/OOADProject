@@ -7,14 +7,20 @@ mapLangToPattern = {
     "C++": r'\b([a-zA-Z_]\w*)\s*\([^;]*\)\s*\{'
 }
 
-def FindClosingBrace(code, start_index):
-    """Given a starting position after an opening brace `{`, find the matching closing brace `}`"""
-    assert(code[start_index] == '{')
+mapBraceTypes = {
+    "{": "}",
+    "(": ")",
+    "[": "]",
+}
+
+def FindClosingBrace(code, start_index, chType: str = '{'):
+    assert(code[start_index] == chType)
+    chEndType = mapBraceTypes[chType]
     brace_count = 1
     for i in range(start_index + 1, len(code)):
-        if code[i] == '{':
+        if code[i] == chType:
             brace_count += 1
-        elif code[i] == '}':
+        elif code[i] == chEndType:
             brace_count -= 1
         if brace_count == 0:
             return i
