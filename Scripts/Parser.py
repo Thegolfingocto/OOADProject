@@ -1,11 +1,12 @@
 import re
 import numpy as np
 
-vecLangs = ["Java", "C++"]
+vecLangs = ["Java", "C++", "Rust"]
 
 mapLangToPattern = {
     "Java": r'\b(?:public|private|protected)?\s*(?:static\s*)?(?:[\w<>\[\]]+\s+)+(\w+)\s*\([^)]*\)\s*(?:throws\s*\w+)?\s*\{',
-    "C++": r'\b([a-zA-Z_]\w*)\s*\([^;]*\)\s*\{'
+    "C++": r'\b([a-zA-Z0-9_]\w*)\s*\([^;)]*\)\s*\{',
+    "Rust": r'\b\s*(?:fn\s*)([a-zA-Z0-9_]\w*)\s*\([^;)]*\)\s*(?:->\s*)?[^;{]*\s*\{',
 }
 
 regIsFunc = r'\b[a-zA-Z0-9_.->]+\('
@@ -78,6 +79,8 @@ def FindFunctions(strCode: str, strL: str = "Java") -> dict:
         iStartLine = strCode.count('\n', 0, idxStart) + 1
         
         idxEnd = FindClosingBrace(strCode, match.end() - 1)
+        #print(strFunctionName, strCode[idxStart : idxEnd + 1])
+        #input()
         iEndLine = strCode.count('\n', 0, idxEnd) + 1
 
         if not iEndLine:
@@ -223,6 +226,7 @@ def Parse(strPath):
     
     dParseData, vecAdj = BuildCC(dParseData)
     mapRankToCells = dParseData["RankMap"]
+    vecRankSizes = [len(mapRankToCells[i]) for i in range(len(mapRankToCells))]
     vecUpVolByRank = [float(np.sum(adj[:,:,0]) / (adj.shape[0] * adj.shape[1])) for adj in vecAdj]
     vecDownVolByRank = [float(np.sum(adj[:,:,1]) / (adj.shape[0] * adj.shape[1])) for adj in vecAdj]
 
@@ -256,7 +260,8 @@ def Parse(strPath):
     print("Volume of +1-Adjacency:", vecUpVolByRank)
     print("Volume of -1-Adjacency:", vecDownVolByRank)
     print("Complex Height:", len(vecAdj))
-    print("Complex Volume:", np.sum(np.array([(i+1) * len(mapRankToCells[i]) for i in range(len(mapRankToCells))])) / np.sum(np.array([len(mapRankToCells[i]) for i in range(len(mapRankToCells))])))
+    print("Rank Sizes:", vecRankSizes)
+    print("Complex Volume:", np.sum(np.array([(i+1) * len(mapRankToCells[i]) for i in range(len(mapRankToCells))])) / np.sum(np.array(vecRankSizes)))
 
 if __name__ == "__main__":
-    Parse("../CodeExamples/Java/0002.txt")
+    Parse("../CodeExamples/Rust/0042.txt")

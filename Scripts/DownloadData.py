@@ -2,9 +2,9 @@ from datasets import load_dataset
 import os
 
 strDataset = "codeparrot/github-code"
-vecLangs = ["Java", "C++"]
-N = 5
-MIN_SIZE = 100000
+vecLangs = ["Java", "C++", "Rust"]
+N = 100
+MIN_SIZE = 25000
 strSaveDir = "../CodeExamples/"
 
 if __name__ == "__main__":
