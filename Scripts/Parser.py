@@ -1,5 +1,7 @@
 import re
 import numpy as np
+import os
+import json
 
 vecLangs = ["Java", "C++", "Rust"]
 
@@ -175,6 +177,7 @@ def BuildCC(dParseData: dict) -> dict:
 
     #these tensors store +/- 1 adjacency relations
     vecAdj = [np.zeros((len(mapRankToCells[i]), len(mapRankToCells[i]), 2)) for i in range(len(mapRankToCells))]
+    vecInc = [np.zeros((len(mapRankToCells[i]), len(mapRankToCells[i+1]))) for i in range(len(mapRankToCells) - 1)]
 
     #compute up-adj
     for r in range(1, len(mapRankToCells)):
@@ -200,19 +203,82 @@ def BuildCC(dParseData: dict) -> dict:
             for i in range(len(dQ[cell]["Callers"])):
                 if dFunctions[dQ[cell]["Callers"][i]]["Rank"] != r + 1: continue
 
+                idx1 = mapRankToCells[r + 1].index(dQ[cell]["Callers"][i])
                 for j in range(i + 1, len(dQ[cell]["Callers"])):
                     if dFunctions[dQ[cell]["Callers"][j]]["Rank"] != r + 1: continue
 
-                    idx1 = mapRankToCells[r + 1].index(dQ[cell]["Callers"][i])
+                    
                     idx2 = mapRankToCells[r + 1].index(dQ[cell]["Callers"][j])
                     vecAdj[r + 1][idx1, idx2, 1] = 1
                     vecAdj[r + 1][idx2, idx1, 1] = 1
+
+    #compute incidence
+    for r in range(len(mapRankToCells) - 1):
+        dQ = dSubFunctions if not r else dFunctions
+        for cell in mapRankToCells[r]:
+            if not r and cell not in dQ.keys(): dQ = dFunctions
+
+            idx1 = mapRankToCells[r].index(cell)
+            for i in range(len(dQ[cell]["Callers"])):
+                if dFunctions[dQ[cell]["Callers"][i]]["Rank"] != r + 1: continue
+
+                idx2 = mapRankToCells[r + 1].index(dQ[cell]["Callers"][i])
+                vecInc[r][idx1, idx2] = 1
+                vecInc[r][idx2, idx1] = 1
 
     return {
         "Functions": dFunctions,
         "SubFunctions": dSubFunctions,
         "RankMap": mapRankToCells,
-    }, vecAdj
+    }, vecAdj, vecInc
+
+
+def GetParseData(strLang: str, idx: int) -> dict:
+    strInputPath = "../CodeExamples/" + strLang + "/" + str(idx).zfill(4) + ".txt"
+    strOutputPath = "../ParseData/" + strLang + "/" + str(idx).zfill(4) + ".txt"
+
+    if os.path.exists(strOutputPath):
+        with open(strOutputPath, "r") as f:
+            return json.load(f)
+
+    if not os.path.exists(strInputPath):
+        print("Error! Download file: {} before calling GetParseData()".format(strInputPath))
+        return
+    
+    with open(strInputPath, "r") as f:
+        dParseData = FindFunctions(f.read(), strLang)
+
+    dParseData, vecAdj, vecInc = BuildCC(dParseData)
+    mapRankToCells = dParseData["RankMap"]
+    vecRankSizes = [len(mapRankToCells[i]) for i in range(len(mapRankToCells))]
+    vecUpVolByRank = [float(np.sum(adj[:,:,0]) / (adj.shape[0] * adj.shape[1])) for adj in vecAdj]
+    vecDownVolByRank = [float(np.sum(adj[:,:,1]) / (adj.shape[0] * adj.shape[1])) for adj in vecAdj]
+    vecIncByRank = [float(np.sum(inc) / (inc.shape[0] * inc.shape[1])) for inc in vecInc]
+
+    dFuncs = dParseData["Functions"]
+    dSubFuncs = dParseData["SubFunctions"]
+
+    dRet = {
+        "Funcs": list(dFuncs.keys()),
+        "FuncLines": [dF["EndLine"] - dF["StartLine"] for dF in dFuncs],
+        "FuncCalls": [len(dF["Callees"]) for dF in dFuncs],
+        "FuncCallers": [len(dF["Callers"]) for dF in dFuncs],
+        "SubFuncs": list(dParseData["SubFunctions"].keys()),
+        "SubFuncCalls": [len(dF["SubCallees"]) for dF in dFuncs],
+        "SubFuncCallers": [len(dF["Callers"]) for dF in dSubFuncs],
+
+        "FuncsPerRank": mapRankToCells,
+        "ComplexHeight": len(vecAdj),
+        "NumCellsPerRank": vecRankSizes,
+        "UpAdjVolPerRank": vecUpVolByRank,
+        "DownAdjVolPerRank": vecDownVolByRank,
+        "IncVolPerRank": vecIncByRank,
+    }
+
+    with open(strOutputPath, "w") as f:
+        json.dump(dRet, f)
+
+    return dRet
 
 def Parse(strPath):
     strLang = ""
@@ -224,7 +290,7 @@ def Parse(strPath):
     with open(strPath, "r") as f:
         dParseData = FindFunctions(f.read(), strLang)
     
-    dParseData, vecAdj = BuildCC(dParseData)
+    dParseData, vecAdj, vecInc = BuildCC(dParseData)
     mapRankToCells = dParseData["RankMap"]
     vecRankSizes = [len(mapRankToCells[i]) for i in range(len(mapRankToCells))]
     vecUpVolByRank = [float(np.sum(adj[:,:,0]) / (adj.shape[0] * adj.shape[1])) for adj in vecAdj]

@@ -3,7 +3,7 @@ import os
 
 strDataset = "codeparrot/github-code"
 vecLangs = ["Java", "C++", "Rust"]
-N = 100
+N = 10000
 MIN_SIZE = 25000
 strSaveDir = "../CodeExamples/"
 
