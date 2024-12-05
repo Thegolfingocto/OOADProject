@@ -47,6 +47,7 @@ def FindFunctionCalls(strLine: str) -> list[str]:
             idxCallEnd = len(strLine) - 1
 
         strName = strLine[idxStart:idxNameEnd]
+
         strCall = strLine[idxNameEnd:idxCallEnd + 1]
 
         #avoid duplicates
@@ -77,10 +78,13 @@ def FindFunctions(strCode: str, strL: str = "Java") -> dict:
     for match in re.finditer(regPattern, strCode):
         strFunctionName = match.group(1)
 
+        if strFunctionName in vecNotFuncs: continue
+
         idxStart = match.start()
         iStartLine = strCode.count('\n', 0, idxStart) + 1
         
         idxEnd = FindClosingBrace(strCode, match.end() - 1)
+        if not idxEnd: continue
         #print(strFunctionName, strCode[idxStart : idxEnd + 1])
         #input()
         iEndLine = strCode.count('\n', 0, idxEnd) + 1
@@ -224,7 +228,6 @@ def BuildCC(dParseData: dict) -> dict:
 
                 idx2 = mapRankToCells[r + 1].index(dQ[cell]["Callers"][i])
                 vecInc[r][idx1, idx2] = 1
-                vecInc[r][idx2, idx1] = 1
 
     return {
         "Functions": dFunctions,
@@ -235,7 +238,12 @@ def BuildCC(dParseData: dict) -> dict:
 
 def GetParseData(strLang: str, idx: int) -> dict:
     strInputPath = "../CodeExamples/" + strLang + "/" + str(idx).zfill(4) + ".txt"
-    strOutputPath = "../ParseData/" + strLang + "/" + str(idx).zfill(4) + ".txt"
+
+    strOutputDir = "../ParseData/"
+    if not os.path.exists(strOutputDir): os.mkdir(strOutputDir)
+    strOutputDir += strLang + "/"
+    if not os.path.exists(strOutputDir): os.mkdir(strOutputDir)
+    strOutputPath = strOutputDir + str(idx).zfill(4) + ".json"
 
     if os.path.exists(strOutputPath):
         with open(strOutputPath, "r") as f:
@@ -260,12 +268,12 @@ def GetParseData(strLang: str, idx: int) -> dict:
 
     dRet = {
         "Funcs": list(dFuncs.keys()),
-        "FuncLines": [dF["EndLine"] - dF["StartLine"] for dF in dFuncs],
-        "FuncCalls": [len(dF["Callees"]) for dF in dFuncs],
-        "FuncCallers": [len(dF["Callers"]) for dF in dFuncs],
+        "FuncLines": [dFuncs[key]["EndLine"] - dFuncs[key]["StartLine"] for key in dFuncs.keys()],
+        "FuncCalls": [len(dFuncs[key]["Callees"]) for key in dFuncs.keys()],
+        "FuncCallers": [len(dFuncs[key]["Callers"]) for key in dFuncs.keys()],
         "SubFuncs": list(dParseData["SubFunctions"].keys()),
-        "SubFuncCalls": [len(dF["SubCallees"]) for dF in dFuncs],
-        "SubFuncCallers": [len(dF["Callers"]) for dF in dSubFuncs],
+        "SubFuncCalls": [len(dFuncs[key]["SubCallees"]) for key in dFuncs.keys()],
+        "SubFuncCallers": [len(dSubFuncs[key]["Callers"]) for key in dSubFuncs.keys()],
 
         "FuncsPerRank": mapRankToCells,
         "ComplexHeight": len(vecAdj),
