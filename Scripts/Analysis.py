@@ -13,7 +13,7 @@ def PlotComplexHeightVsLength(N: int = 100) -> None:
         for n in range(N):
             dData = GetParseData(strLang, n)
 
-            print(dData["ComplexHeight"])
+            print(strLang, n, dData["ComplexHeight"])
 
 
 def main():

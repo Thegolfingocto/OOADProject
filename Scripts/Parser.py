@@ -105,7 +105,7 @@ def FindFunctions(strCode: str, strL: str = "Java") -> dict:
             }
             dFunctions[strFunctionName] = dFunc
         else:
-            print("Warning! Found duplicate function declaration:", strFunctionName)
+            #print("Warning! Found duplicate function declaration:", strFunctionName)
             continue
     
     #collect all names in a list for callee mapping
@@ -144,7 +144,7 @@ def FindFunctions(strCode: str, strL: str = "Java") -> dict:
         "SubFunctions": dSubFunctions
     }
 
-def AssignRank(strKey: str, dUniverse: dict) -> None:
+def AssignRank(strKey: str, dUniverse: dict, vecAlreadyVisited: list[str] = [], iDepth: int = 0, dKeyToDepth: dict = {}) -> None:
     if dUniverse[strKey]["Rank"] != -1: return
 
     #functions w/ no calls are rank 0. functions w/ only sub-callees are rank 1. These form the base cases of the recursion.
@@ -156,12 +156,24 @@ def AssignRank(strKey: str, dUniverse: dict) -> None:
         return
     
     iMaxR = 0
-    print(strKey, dUniverse[strKey]["Callees"])
+    iLoopR = 0
+    #print(strKey, dUniverse[strKey]["Callees"], vecAlreadyVisited if len(vecAlreadyVisited) < 6 else len(vecAlreadyVisited))
     for strK in dUniverse[strKey]["Callees"]:
-        if strKey in dUniverse[strK]["Callees"]: continue #prevent infinite recursions due to recursions...lmao
-        AssignRank(strK, dUniverse) #recurse downwards w.r.t rank
+        #prevent infinite recursions due to recursions/loops...lmao
+        if strK in vecAlreadyVisited:
+            iLoopR = max([iLoopR, iDepth - dKeyToDepth[strK] + 2]) #size of the function loop
+            print("Found loop of depth:", iLoopR)
+            continue
+
+        if strKey not in vecAlreadyVisited: vecAlreadyVisited.append(strKey)
+            
+        if strKey not in dKeyToDepth.keys(): dKeyToDepth[strKey] = iDepth
+        else: dKeyToDepth[strKey] = max([iDepth, dKeyToDepth[strKey]])
+
+        AssignRank(strK, dUniverse, vecAlreadyVisited, iDepth + 1, dKeyToDepth) #recurse downwards w.r.t rank
         iMaxR = max([iMaxR, dUniverse[strK]["Rank"]])
-    dUniverse[strKey]["Rank"] = iMaxR + 1
+
+    dUniverse[strKey]["Rank"] = iMaxR + iLoopR + 1
 
     return
 
