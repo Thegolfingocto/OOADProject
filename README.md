@@ -1,4 +1,4 @@
-Required python packages: re (regex), numpy, tqdm, and datasets (from hugging face).  
+Required python packages: re (regex), numpy, tqdm, and datasets (from hugging face). Tested and developed with python 3.12.3
 
 Instructions for use: 
 There are three scripts: DownloadData, Parser, and Analysis. They are intended to be run in that order. First, open up DownloadData in your favorite editor, and modify the attributes at the top to your liking. 
