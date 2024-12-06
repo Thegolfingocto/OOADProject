@@ -1,12 +1,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import tqdm
+import sys
 
 from Parser import *
 
 vecLangs = ["Java", "C++", "Rust"]
 vecLangColors = ["lime", "dodgerblue", "maroon"]
 vecChannelNames = ["Number of Cells", "Complex Height", "Number of Sub-Cells", "Total Cells w/ Rank <= 2", "Total Cell w/ Rank > 2"]
+vecPlotTitles = [
+    "Average Complex Height vs. Number of Cells",
+    "Average Number of Sub-Cells vs. Number of Cells",
+    "Average Number of Low-Rank Cells vs. Number of Total Cells",
+    "Average Number of High-Rank Cells vs. Number of Total Cells",
+]
 
 def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bRDists: bool = False, bADists: bool = False, bIDists: bool = False,
                        ) -> None:
@@ -163,6 +170,7 @@ def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bR
 
     #------------------Scalars-----------------------#
     maxX = 255
+    maxY = 0
     iBinSize = 7
     vecXBins = [i for i in range(50)] + [50 + 3*i for i in range((150 - 50) // 3)] + [150 + iBinSize*i for i in range((maxX - 150) // iBinSize)]
 
@@ -191,24 +199,38 @@ def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bR
                 plt.plot([vecXBins[i+1], vecXBins[i+1]], [Y[-1] - std, Y[-1] + std], color = "black")
 
         plt.plot(vecXBins[1:], Y, label = strLang, color = vecLangColors[l], linewidth = 3)
-
+        if max(Y) > maxY: maxY = max(Y)
 
     plt.xlabel(vecChannelNames[0], fontsize = 20)
     plt.ylabel(vecChannelNames[idxY], fontsize = 20)
 
     plt.xticks(np.arange(0, maxX * 1.05, int(maxX / 20)), fontsize = 12)
-    #plt.yticks(np.arange(0, max(Y) * 1.05, int(max(Y) / 20)), fontsize = 12)
+    plt.yticks(np.arange(0, maxY * 1.05, int(maxY / 20) if maxY > 20 else (maxY / 20)), fontsize = 12)
     #plt.yticks(np.arange(0, 9, 1), fontsize = 12)
     plt.grid()
 
-    plt.title("Average Number of High-Rank Cells vs. Number of Total Cells", fontsize = 32)
+    plt.title(vecPlotTitles[idxY - 1], fontsize = 32)
 
     plt.legend(fontsize = 26)
     plt.show()
     plt.close()
 
 def main():
-    PlotComplexScalars(N = 10000, idxY = 4, bRDists = True, bADists = False, bIDists = True)
+    if not os.path.exists("Config.json"):
+        print("Error! Config.json missing!")
+        quit()
+    
+    with open("Config.json", "r") as f:
+        dCfg = json.load(f)
+
+    bDists = False
+    iY = 1
+    for i in range(len(sys.argv)):
+        strArg = sys.argv[i]
+        if strArg.lower() == "--d": bDists = True
+        if strArg.lower() == "--y": iY = int(sys.argv[i+1])
+
+    PlotComplexScalars(N = dCfg["N"], idxY = iY, bRDists = bDists, bADists = bDists)
 
 
 if __name__ == "__main__":

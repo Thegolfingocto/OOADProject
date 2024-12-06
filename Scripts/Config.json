@@ -1,0 +1,7 @@
+{
+    "Dataset":  "codeparrot/github-code",
+    "Langs": ["Java", "C++", "Rust"],
+    "N": 10000,
+    "MIN_SIZE": 25000,
+    "SaveDir": "../CodeExamples/"
+}

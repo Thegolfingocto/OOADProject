@@ -1,13 +1,22 @@
 from datasets import load_dataset 
 import os
+import json
 
-strDataset = "codeparrot/github-code"
-vecLangs = ["Java", "C++", "Rust"]
-N = 10000
-MIN_SIZE = 25000
-strSaveDir = "../CodeExamples/"
 
 if __name__ == "__main__":
+    if not os.path.exists("Config.json"):
+        print("Error! Config.json missing!")
+        quit()
+    
+    with open("Config.json", "r") as f:
+        dCfg = json.load(f)
+
+    strDataset = dCfg["Dataset"]
+    vecLangs = dCfg["Langs"]
+    MIN_SIZE = dCfg["MIN_SIZE"]
+    N = dCfg["N"]
+    strSaveDir = dCfg["SaveDir"]
+
     hfDS = load_dataset(strDataset, split = "train", streaming = True)
     vecSamples = [[] for _ in range(len(vecLangs))]
 
