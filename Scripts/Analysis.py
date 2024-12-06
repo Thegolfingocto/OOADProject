@@ -208,7 +208,7 @@ def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bR
     plt.close()
 
 def main():
-    PlotComplexScalars(N = 10000, idxY = 4, bRDists = False, bADists = False, bIDists = True)
+    PlotComplexScalars(N = 10000, idxY = 4, bRDists = True, bADists = False, bIDists = True)
 
 
 if __name__ == "__main__":
