@@ -162,7 +162,7 @@ def AssignRank(strKey: str, dUniverse: dict, vecAlreadyVisited: list[str] = [], 
         #prevent infinite recursions due to recursions/loops...lmao
         if strK in vecAlreadyVisited:
             iLoopR = max([iLoopR, iDepth - dKeyToDepth[strK] + 2]) #size of the function loop
-            print("Found loop of depth:", iLoopR)
+            #print("Found loop of depth:", iLoopR)
             continue
 
         if strKey not in vecAlreadyVisited: vecAlreadyVisited.append(strKey)
@@ -271,9 +271,9 @@ def GetParseData(strLang: str, idx: int) -> dict:
     dParseData, vecAdj, vecInc = BuildCC(dParseData)
     mapRankToCells = dParseData["RankMap"]
     vecRankSizes = [len(mapRankToCells[i]) for i in range(len(mapRankToCells))]
-    vecUpVolByRank = [float(np.sum(adj[:,:,0]) / (adj.shape[0] * adj.shape[1])) for adj in vecAdj]
-    vecDownVolByRank = [float(np.sum(adj[:,:,1]) / (adj.shape[0] * adj.shape[1])) for adj in vecAdj]
-    vecIncByRank = [float(np.sum(inc) / (inc.shape[0] * inc.shape[1])) for inc in vecInc]
+    vecUpVolByRank = [float(np.sum(adj[:,:,0]) / (adj.shape[0] * adj.shape[1])) if adj.shape[0] > 0 else 0 for adj in vecAdj]
+    vecDownVolByRank = [float(np.sum(adj[:,:,1]) / (adj.shape[0] * adj.shape[1])) if adj.shape[0] > 0 else 0 for adj in vecAdj]
+    vecIncByRank = [float(np.sum(inc) / (inc.shape[0] * inc.shape[1])) if inc.shape[0] > 0 else 0 for inc in vecInc]
 
     dFuncs = dParseData["Functions"]
     dSubFuncs = dParseData["SubFunctions"]
