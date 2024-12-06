@@ -6,6 +6,7 @@ from Parser import *
 
 vecLangs = ["Java", "C++", "Rust"]
 vecLangColors = ["lime", "dodgerblue", "maroon"]
+vecChannelNames = ["Number of Cells", "Complex Height", "Number of Sub-Cells", "Total Cells w/ Rank <= 2", "Total Cell w/ Rank > 2"]
 
 def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bRDists: bool = False, bADists: bool = False, bIDists: bool = False,
                        ) -> None:
@@ -66,9 +67,20 @@ def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bR
             for dCC in vecFullData[l]:
                 nDist[:len(dCC["NumCellsPerRank"])] += np.array(dCC["NumCellsPerRank"])
                 nN[:len(dCC["NumCellsPerRank"])] += 1
+            nN = np.where(nN == 0, 1, nN)
             nDist /= nN
 
             plt.plot(np.arange(0, 15, 1), nDist, label = strLang, color = vecLangColors[l], linewidth = 3)
+
+        plt.xticks(np.arange(0, 15, 1), fontsize = 12)
+        maxY = np.max(nDist)
+        plt.yticks(np.arange(0, maxY * 1.1, int(maxY / 10)), fontsize = 12)
+        plt.grid()
+
+        plt.xlabel("Rank", fontsize = 20)
+        plt.ylabel("Average Number of Cells", fontsize = 20)
+
+        plt.title("Distribution of Cells vs. Rank", fontsize = 32)
 
         plt.legend(fontsize = 26)
         plt.show()
@@ -93,11 +105,25 @@ def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bR
                 nDistDown[:len(dCC["DownAdjVolPerRank"])] += np.array(dCC["DownAdjVolPerRank"])
                 nNDown[:len(dCC["DownAdjVolPerRank"])] += 1
 
+            nNUp = np.where(nNUp == 0, 1, nNUp)
+            nNDown = np.where(nNDown == 0, 1, nNDown)
+
             nDistUp /= nNUp
             nDistDown /= nNDown
 
             plt.plot(np.arange(0, 15, 1), nDistUp, label = strLang + ": +1 Adj.", color = vecLangColors[l], linewidth = 3)
-            plt.plot(np.arange(0, 15, 1), nDistDown, label = strLang + ": -1 Adj.", color = vecLangColors[l], linewidth = 3, linestyle = "dashed")
+            plt.plot(np.arange(0, 15, 1)[1:], nDistDown[1:], label = strLang + ": -1 Adj.", color = vecLangColors[l], linewidth = 3, linestyle = "dashed")
+
+        plt.xticks(np.arange(0, 15, 1), fontsize = 12)
+        maxY = max([np.max(nDistUp), np.max(nDistDown)])
+        print(maxY)
+        plt.yticks((1000 * np.arange(0, maxY * 1.1, maxY / 10)).astype(np.int16) / 1000, fontsize = 12)
+
+        plt.xlabel("Rank", fontsize = 20)
+        plt.ylabel("Average Volume of +/-1 Adjacency Matrices", fontsize = 20)
+        plt.grid()
+
+        plt.title("Distribution of Average Adjacency Volumes vs. Cell Rank", fontsize = 32)
 
         plt.legend(fontsize = 26)
         plt.show()
@@ -119,6 +145,16 @@ def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bR
 
             plt.plot(np.arange(0, 15, 1), nDist, label = strLang, color = vecLangColors[l], linewidth = 3)
 
+        plt.xticks(np.arange(0, 15, 1), fontsize = 12)
+        maxY = np.max(nDist)
+        plt.yticks(np.arange(0, maxY * 1.1, int(maxY / 10)), fontsize = 12)
+        plt.grid()
+
+        plt.xlabel("Rank", fontsize = 20)
+        plt.ylabel("Average Volume of Incidence Matrices vs. Rank", fontsize = 20)
+
+        plt.title("Distribution of Average Incidence Volumes vs. Cells Rank", fontsize = 32)
+
         plt.legend(fontsize = 26)
         plt.show()
         plt.close()
@@ -128,7 +164,7 @@ def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bR
     #------------------Scalars-----------------------#
     maxX = 255
     iBinSize = 7
-    vecXBins = [i for i in range(60)] + [60 + iBinSize*i for i in range((maxX - 60) // iBinSize)]
+    vecXBins = [i for i in range(50)] + [50 + 3*i for i in range((150 - 50) // 3)] + [150 + iBinSize*i for i in range((maxX - 150) // iBinSize)]
 
     for l in range(len(vecLangs)):
         strLang = vecLangs[l]
@@ -144,7 +180,10 @@ def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bR
 
         for i in range(len(vecXBins) - 1):
             sIdx = np.where((vecData[l][:, 0] >= vecXBins[i]) & (vecData[l][:, 0] < vecXBins[i+1]))
-            Y.append(np.mean(vecData[l][sIdx[0], idxY]))
+
+            vecData[l][vecData[l] != vecData[l]] = 0
+
+            Y.append(np.nanmean(vecData[l][sIdx[0], idxY]) if sIdx[0].shape[0] > 0 else 0)
             YStd.append(np.std(vecData[l][sIdx[0], idxY]))
 
             if bPlotStd:
@@ -152,6 +191,17 @@ def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bR
                 plt.plot([vecXBins[i+1], vecXBins[i+1]], [Y[-1] - std, Y[-1] + std], color = "black")
 
         plt.plot(vecXBins[1:], Y, label = strLang, color = vecLangColors[l], linewidth = 3)
+
+
+    plt.xlabel(vecChannelNames[0], fontsize = 20)
+    plt.ylabel(vecChannelNames[idxY], fontsize = 20)
+
+    plt.xticks(np.arange(0, maxX * 1.05, int(maxX / 20)), fontsize = 12)
+    #plt.yticks(np.arange(0, max(Y) * 1.05, int(max(Y) / 20)), fontsize = 12)
+    #plt.yticks(np.arange(0, 9, 1), fontsize = 12)
+    plt.grid()
+
+    plt.title("Average Number of High-Rank Cells vs. Number of Total Cells", fontsize = 32)
 
     plt.legend(fontsize = 26)
     plt.show()
