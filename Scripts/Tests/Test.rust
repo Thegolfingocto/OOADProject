@@ -1,0 +1,8 @@
+fn ExampleFunctionCall() {
+
+}
+
+fn main() {
+    ExampleFunctionCall();
+    ExampleSubFunctionCall();
+}
