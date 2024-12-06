@@ -5,9 +5,10 @@ import tqdm
 from Parser import *
 
 vecLangs = ["Java", "C++", "Rust"]
-vecLangColors = ["lime", "cyan", "orangered"]
+vecLangColors = ["lime", "dodgerblue", "maroon"]
 
-def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bHDists: bool = False) -> None:
+def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bRDists: bool = False, bADists: bool = False, bIDists: bool = False,
+                       ) -> None:
     '''
     Channel list:
     0 -> Number of Functions
@@ -57,7 +58,7 @@ def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bH
     
 
     #---------------Rank distributions------------------#
-    if bHDists:
+    if bRDists:
         for l in range(len(vecLangs)):
             strLang = vecLangs[l]
             nDist = np.zeros((15))
@@ -65,6 +66,55 @@ def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bH
             for dCC in vecFullData[l]:
                 nDist[:len(dCC["NumCellsPerRank"])] += np.array(dCC["NumCellsPerRank"])
                 nN[:len(dCC["NumCellsPerRank"])] += 1
+            nDist /= nN
+
+            plt.plot(np.arange(0, 15, 1), nDist, label = strLang, color = vecLangColors[l], linewidth = 3)
+
+        plt.legend(fontsize = 26)
+        plt.show()
+        plt.close()
+
+    
+    #---------------Adj. Volume distributions------------------#
+    if bADists:
+        for l in range(len(vecLangs)):
+            strLang = vecLangs[l]
+
+            nDistUp = np.zeros((15))
+            nDistDown = np.zeros((15))
+
+            nNUp = np.zeros((15))
+            nNDown = np.zeros((15))
+
+            for dCC in vecFullData[l]:
+                nDistUp[:len(dCC["UpAdjVolPerRank"])] += np.array(dCC["UpAdjVolPerRank"])
+                nNUp[:len(dCC["UpAdjVolPerRank"])] += 1
+
+                nDistDown[:len(dCC["DownAdjVolPerRank"])] += np.array(dCC["DownAdjVolPerRank"])
+                nNDown[:len(dCC["DownAdjVolPerRank"])] += 1
+
+            nDistUp /= nNUp
+            nDistDown /= nNDown
+
+            plt.plot(np.arange(0, 15, 1), nDistUp, label = strLang + ": +1 Adj.", color = vecLangColors[l], linewidth = 3)
+            plt.plot(np.arange(0, 15, 1), nDistDown, label = strLang + ": -1 Adj.", color = vecLangColors[l], linewidth = 3, linestyle = "dashed")
+
+        plt.legend(fontsize = 26)
+        plt.show()
+        plt.close()
+
+
+    #---------------Incidence distributions------------------#
+    if bIDists:
+        for l in range(len(vecLangs)):
+            strLang = vecLangs[l]
+            nDist = np.zeros((15))
+            nN = np.zeros((15))
+            for dCC in vecFullData[l]:
+                nDist[:len(dCC["IncVolPerRank"])] += np.array(dCC["IncVolPerRank"])
+                nN[:len(dCC["IncVolPerRank"])] += 1
+            nN = np.where(nN == 0, 1, nN)
+            print(nDist)
             nDist /= nN
 
             plt.plot(np.arange(0, 15, 1), nDist, label = strLang, color = vecLangColors[l], linewidth = 3)
@@ -108,7 +158,7 @@ def PlotComplexScalars(N: int = 10000, idxY: int = 1, bPlotStd: bool = False, bH
     plt.close()
 
 def main():
-    PlotComplexScalars(N = 10000, idxY = 4, bHDists = True)
+    PlotComplexScalars(N = 10000, idxY = 4, bRDists = False, bADists = False, bIDists = True)
 
 
 if __name__ == "__main__":
