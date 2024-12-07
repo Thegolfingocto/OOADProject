@@ -19,7 +19,7 @@ Scripts contains four scripts and one config file.
 ### Instructions for use: 
 There are four scripts: DownloadData, Parser, Analysis, and Validation. They are intended to be run in that order. <br>
 First, open up the Config.json file in your favorite editor, and modify the attributes at the top to your liking. 
-In the paper, we downloaded 30,000 samples for evaluation. However for the purpose of testing, set N = 100.
+In the paper, we downloaded 30,000 samples for evaluation. However for the purpose of testing, set N = 100. <br>
 Now, run DownloadData.py, it will save .txt files containing the samples to a CodeExamples/{Language} directory structure. <br>
 
 Next, run Analysis.py. It will generate the combinatorial complexes, save them to disk, and display some of the figures used in the paper. 
