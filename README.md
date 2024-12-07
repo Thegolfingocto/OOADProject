@@ -32,4 +32,4 @@ Next, run Analysis.py. It will generate the combinatorial complexes, save them t
 There are two command line arguments one may pass to Analysis.py. Use ```--Y {1, 2, 3, 4}``` to plot the different scalar valued metrics discussed in the paper.
 Use ```--D``` to also plot the distributional data. Note that assuming you've followed along with N = 100, the figures will be different from the paper due to the reduced sampling size. <br>
 
-For testing, run the Validation script. It will parse the three example pieces of code provided in the Scripts/Tests directory, and check that the combinatorial complexes extracted therefrom are correct. 
+For testing, run the Validation script. It will parse the three example pieces of code provided in the Scripts/Tests directory, and check that the combinatorial complexes extracted from there are correct. 
